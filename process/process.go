@@ -3,10 +3,12 @@ package process
 import (
 	"encoding/json"
 	"log"
+	"os"
 	"os/exec"
-	"soulxbot/schema"
+	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/soulxburn/twitchpubsub/schema"
 )
 
 const BACKGROUND_REWARD_ID = "6f111bb7-315a-462a-a4e0-54333ca06a14"
@@ -19,6 +21,7 @@ var wallpapers = map[string]string{
 	"5": "/home/soulxburn/wallpaper/95-952362_dark-wood-wallpapers-terminal-background-image-dark.jpg",
 }
 
+// ReadMessage
 func ReadMessage(c *websocket.Conn, done chan struct{}) {
 	defer close(done)
 	for {
@@ -50,7 +53,37 @@ func ReadMessage(c *websocket.Conn, done chan struct{}) {
 				}
 			}
 		}
-
 		log.Printf("recv(%v): %s", mtype, message)
+	}
+}
+
+// Listen
+func Listen(c *websocket.Conn, interrupt chan os.Signal, done chan struct{}) {
+	ticker := time.NewTicker(time.Minute * 1)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			err := c.WriteJSON(schema.ListenRequest{Type: "PING"})
+			if err != nil {
+				log.Println("Ping Failed:", err)
+				return
+			}
+		case <-interrupt:
+			log.Println("interrupt received")
+
+			// Cleanly close the connection by sending a close message and then
+			// waiting (with timeout) for the server to close the connection.
+			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			if err != nil {
+				log.Println("write close:", err)
+				return
+			}
+			select {
+			case <-done:
+			case <-time.After(time.Second):
+			}
+			return
+		}
 	}
 }
