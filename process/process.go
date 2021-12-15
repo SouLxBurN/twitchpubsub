@@ -3,27 +3,27 @@ package process
 import (
 	"encoding/json"
 	"log"
+	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/soulxburn/twitchpubsub/schema"
 )
 
-const BACKGROUND_REWARD_ID = "6f111bb7-315a-462a-a4e0-54333ca06a14"
+const (
+	SELECT_BACKGROUND_RWD_ID = "6f111bb7-315a-462a-a4e0-54333ca06a14"
+	RANDOM_BACKGROUND_RWD_ID = "2b43e9da-b7db-4932-8a05-67422a93d1f8"
+)
 
-var wallpapers = map[string]string{
-	"1": "/home/soulxburn/.config/i3/digital-landscape-wallpaper.jpg",
-	"2": "/home/soulxburn/wallpaper/The_Pink_Sunset_Wallpaper_2560x1600.jpg",
-	"3": "/home/soulxburn/wallpaper/black-and-red-abstract-painting.jpeg",
-	"4": "/home/soulxburn/wallpaper/3399647.jpeg",
-	"5": "/home/soulxburn/wallpaper/95-952362_dark-wood-wallpapers-terminal-background-image-dark.jpg",
-}
+var currentBackground int = 0
 
 // ReadMessage
 func ReadMessage(c *websocket.Conn, done chan struct{}) {
 	defer close(done)
+	rand.Seed(time.Now().UnixNano())
 	for {
 		mtype, message, err := c.ReadMessage()
 		if err != nil {
@@ -43,12 +43,20 @@ func ReadMessage(c *websocket.Conn, done chan struct{}) {
 
 			if tpm.Type == "reward-redeemed" {
 				log.Println("Reward ID: ", tpm.Data.Redemption.ID)
-				if tpm.Data.Redemption.Reward.ID == BACKGROUND_REWARD_ID {
-					wallpaper := wallpapers[tpm.Data.Redemption.UserInput[:1]]
-					if wallpaper != "" {
-						cmd := exec.Command("feh", "--bg-scale", wallpaper)
-						stdout, err := cmd.Output()
-						log.Println("feh Output: ", stdout, err)
+				switch tpm.Data.Redemption.Reward.ID {
+				case SELECT_BACKGROUND_RWD_ID:
+					input, err := strconv.Atoi(tpm.Data.Redemption.UserInput[:2])
+					if err != nil {
+						if err := changeBackground(input); err != nil {
+							log.Println("Error while selecting background: ", err)
+						}
+					}
+				case RANDOM_BACKGROUND_RWD_ID:
+					input := currentBackground
+					for ; input == currentBackground; input = (rand.Int() % (len(wallpapers) - 1)) + 1 {
+					}
+					if err := changeBackground(input); err != nil {
+						log.Println("Error while randomizing background: ", err)
 					}
 				}
 			}
@@ -86,4 +94,17 @@ func Listen(c *websocket.Conn, interrupt chan os.Signal, done chan struct{}) {
 			return
 		}
 	}
+}
+
+// changeBackground
+func changeBackground(wpIdx int) error {
+	wallpaper := wallpapers[strconv.Itoa(wpIdx)]
+	if wallpaper != "" {
+		cmd := exec.Command("feh", "--bg-scale", wallpaper)
+		stdout, err := cmd.Output()
+		log.Println("feh Output: ", stdout)
+		currentBackground = wpIdx
+		return err
+	}
+	return nil
 }
