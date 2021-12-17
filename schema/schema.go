@@ -8,6 +8,7 @@ type Message struct {
 		Topic   string `json:"topic,omitempty"`
 		Message string `json:"message,omitempty"`
 	} `json:"data,omitempty"`
+	Error string `json:"error,omitempty"`
 }
 
 type TwitchPubMessage struct {

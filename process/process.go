@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"math/rand"
-	"os"
 	"os/exec"
 	"strconv"
 	"time"
@@ -34,8 +33,17 @@ func ReadMessage(c *websocket.Conn, done chan struct{}) {
 		if err := json.Unmarshal(message, messageObject); err != nil {
 			log.Println("Failed to Unmarshal: ", err)
 		}
-
-		if messageObject.Type == "MESSAGE" {
+		switch messageObject.Type {
+		case "RESPONSE":
+			if messageObject.Error == "ERR_BADAUTH" {
+				log.Println("Authorization Failed.")
+				time.Sleep(5 * time.Second)
+				return
+			}
+		case "RECONNECT":
+			log.Println("Received Reconnect Notice")
+			return
+		case "MESSAGE":
 			var tpm = &schema.TwitchPubMessage{}
 			if err := json.Unmarshal([]byte(messageObject.Data.Message), tpm); err != nil {
 				log.Println("Failed to Unmarshal Twitch Message: ", err)
@@ -65,8 +73,8 @@ func ReadMessage(c *websocket.Conn, done chan struct{}) {
 	}
 }
 
-// Listen
-func Listen(c *websocket.Conn, interrupt chan os.Signal, done chan struct{}) {
+// StartPinging
+func StartPinging(c *websocket.Conn, done chan struct{}) {
 	ticker := time.NewTicker(time.Minute * 1)
 	defer ticker.Stop()
 	for {
@@ -77,20 +85,7 @@ func Listen(c *websocket.Conn, interrupt chan os.Signal, done chan struct{}) {
 				log.Println("Ping Failed:", err)
 				return
 			}
-		case <-interrupt:
-			log.Println("interrupt received")
-
-			// Cleanly close the connection by sending a close message and then
-			// waiting (with timeout) for the server to close the connection.
-			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-			if err != nil {
-				log.Println("write close:", err)
-				return
-			}
-			select {
-			case <-done:
-			case <-time.After(time.Second):
-			}
+		case <-done:
 			return
 		}
 	}
