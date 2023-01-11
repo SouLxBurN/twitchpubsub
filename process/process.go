@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"log"
 	"math/rand"
+	"os"
 	"os/exec"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -19,12 +21,16 @@ const (
 )
 
 var currentBackground int = 0
+var wallpapers map[string]string
 
 // ReadMessage
 func ReadMessage(c *websocket.Conn, done chan struct{}) {
 	defer close(done)
 	rand.Seed(time.Now().UnixNano())
 	for {
+		wallpapers_json, err := os.ReadFile("../stream-backgrounds/wallpapers.json")
+		err = json.Unmarshal(wallpapers_json, &wallpapers)
+
 		mtype, message, err := c.ReadMessage()
 		if err != nil {
 			log.Println("Error:", err)
@@ -94,9 +100,12 @@ func StartPinging(c *websocket.Conn, done chan struct{}) {
 // changeBackground
 func changeBackground(wpIdx int) error {
 	wallpaper := wallpapers[strconv.Itoa(wpIdx)]
-	log.Println("Wallpaper: ", wallpaper)
+	binWD, _ := os.Getwd()
+	wp_abs_path := path.Join(binWD, "stream-backgrounds", wallpaper)
+
+	log.Println("Wallpaper: ", wp_abs_path)
 	if wallpaper != "" {
-		cmd := exec.Command("feh", "--bg-scale", wallpaper)
+		cmd := exec.Command("feh", "--bg-scale", wp_abs_path)
 		stdout, err := cmd.Output()
 		log.Println("feh Output: ", stdout)
 		currentBackground = wpIdx
