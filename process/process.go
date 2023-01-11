@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os/exec"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -35,13 +36,13 @@ func ReadMessage(c *websocket.Conn, done chan struct{}) {
 		}
 		switch messageObject.Type {
 		case "RESPONSE":
+			// recv(1): {"type":"RESPONSE","error":"ERR_BADAUTH","nonce":""}
 			if messageObject.Error == "ERR_BADAUTH" {
 				log.Println("Authorization Failed.")
-				time.Sleep(5 * time.Second)
+				time.NewTimer(5 * time.Second)
 				return
 			}
 		case "RECONNECT":
-			log.Println("Received Reconnect Notice")
 			return
 		case "MESSAGE":
 			var tpm = &schema.TwitchPubMessage{}
@@ -53,11 +54,10 @@ func ReadMessage(c *websocket.Conn, done chan struct{}) {
 				log.Println("Reward ID: ", tpm.Data.Redemption.ID)
 				switch tpm.Data.Redemption.Reward.ID {
 				case SELECT_BACKGROUND_RWD_ID:
-					input, err := strconv.Atoi(tpm.Data.Redemption.UserInput[:2])
-					if err != nil {
-						if err := changeBackground(input); err != nil {
-							log.Println("Error while selecting background: ", err)
-						}
+					input, err := strconv.Atoi(strings.TrimSpace(tpm.Data.Redemption.UserInput))
+					log.Println(input, err)
+					if err := changeBackground(input); err != nil {
+						log.Println("Error while selecting background: ", err)
 					}
 				case RANDOM_BACKGROUND_RWD_ID:
 					input := currentBackground
@@ -94,6 +94,7 @@ func StartPinging(c *websocket.Conn, done chan struct{}) {
 // changeBackground
 func changeBackground(wpIdx int) error {
 	wallpaper := wallpapers[strconv.Itoa(wpIdx)]
+	log.Println("Wallpaper: ", wallpaper)
 	if wallpaper != "" {
 		cmd := exec.Command("feh", "--bg-scale", wallpaper)
 		stdout, err := cmd.Output()
