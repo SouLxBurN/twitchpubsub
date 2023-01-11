@@ -28,7 +28,7 @@ func ReadMessage(c *websocket.Conn, done chan struct{}) {
 	defer close(done)
 	rand.Seed(time.Now().UnixNano())
 	for {
-		wallpapers_json, err := os.ReadFile("../stream-backgrounds/wallpapers.json")
+		wallpapers_json, err := os.ReadFile("./stream-backgrounds/wallpapers.json")
 		err = json.Unmarshal(wallpapers_json, &wallpapers)
 
 		mtype, message, err := c.ReadMessage()
