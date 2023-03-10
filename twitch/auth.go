@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 )
 
@@ -63,7 +62,6 @@ func (a *AuthTokenProxy) refreshAuthToken() error {
 
 	response, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 	defer response.Body.Close()
@@ -96,7 +94,6 @@ func (a *AuthTokenProxy) validateAuthToken() bool {
 
 	response, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Println(err)
 		return false
 	}
 	defer response.Body.Close()

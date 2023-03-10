@@ -35,7 +35,7 @@ func main() {
 	for {
 		aToken, err := auth.GetAuthToken()
 		if err != nil {
-			log.Fatal("Failed to retrieve/refresh auth token: ", err)
+			log.Fatal("Failed to retrieve/refresh auth token")
 		}
 
 		c := ws.NewConnection(TWITCH_WS_URL)
@@ -48,7 +48,7 @@ func main() {
 			},
 		}
 		if err := c.WriteJSON(listen); err != nil {
-			log.Fatal("Failed to subscribe to Topics", err)
+			log.Fatal("Failed to subscribe to Topics")
 		}
 
 		// ReadMessage Process

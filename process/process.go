@@ -33,7 +33,7 @@ func ReadMessage(c *websocket.Conn, done chan struct{}) {
 
 		mtype, message, err := c.ReadMessage()
 		if err != nil {
-			log.Println("Error:", err)
+			log.Println("Error when reading message")
 			return
 		}
 		var messageObject = &schema.Message{}
@@ -106,8 +106,7 @@ func changeBackground(wpIdx int) error {
 	log.Println("Wallpaper: ", wp_abs_path)
 	if wallpaper != "" {
 		cmd := exec.Command("feh", "--bg-scale", wp_abs_path)
-		stdout, err := cmd.Output()
-		log.Println("feh Output: ", stdout)
+		_, err := cmd.Output()
 		currentBackground = wpIdx
 		return err
 	}
